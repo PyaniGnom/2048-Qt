@@ -5,6 +5,7 @@
 #include <QPalette>
 #include <QBrush>
 #include <QPixmap>
+#include <QPushButton>
 
 int main(int argc, char *argv[])
 {

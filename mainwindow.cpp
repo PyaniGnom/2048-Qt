@@ -1,19 +1,25 @@
-#include "mainwindow.h"
 #include <QApplication>
 #include <QScreen>
 #include <QKeyEvent>
 #include <QPainter>
 #include <QRandomGenerator>
-//ахахахахахах ты это не увидешь, лошок
-MainWindow::MainWindow(QWidget *parent): QMainWindow(parent)
+#include <QPropertyAnimation>
+#include <iostream>
+#include "mainwindow.h"
+
+MainWindow::MainWindow(QWidget *parent): QMainWindow(parent), gridLayout(new QGridLayout)
 {
     setFixedSize(551, 962);
     updateBackground();
     centerWindow();
 
     initUI();
+
     addRandomTile();
     addRandomTile();
+    /*for (int i = 0; i < 16; ++i) {
+        addRandomTile();
+    }*/
 }
 
 MainWindow::~MainWindow()
@@ -26,27 +32,20 @@ void MainWindow::resizeEvent(QResizeEvent *event)
     updateBackground();
 }
 
-void MainWindow::paintEvent(QPaintEvent *event)
-{
-    QPainter painter(this);
-    //drawGrid(painter);
-    drawTiles(painter);
-}
-
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     switch(event->key()) {
         case Qt::Key_Up:
-            moveTiles(Direction::Up);
+            moveUp();
             break;
         case Qt::Key_Down:
-            moveTiles(Direction::Down);
+            moveDown();
             break;
         case Qt::Key_Left:
-            moveTiles(Direction::Left);
+            moveLeft();
             break;
         case Qt::Key_Right:
-            moveTiles(Direction::Right);
+            moveRight();
             break;
     }
 
@@ -77,9 +76,9 @@ void MainWindow::centerWindow()
 
 void MainWindow::initUI()
 {
-    tiles.resize(4);
+    board.resize(4);
     for (int row = 0; row < 4; ++row) {
-        tiles[row].resize(4);
+        board[row].resize(4);
     }
 
     setWindowTitle("2048");
@@ -90,7 +89,7 @@ void MainWindow::addRandomTile()
     QVector<QPair<int, int>> emptyTiles;
     for (int row = 0; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
-            if (tiles[row][col].isEmpty()) {
+            if (board[row][col] == nullptr) {
                 emptyTiles.append(qMakePair(row, col));
             }
         }
@@ -99,50 +98,11 @@ void MainWindow::addRandomTile()
     if (!emptyTiles.isEmpty()) {
         int index = QRandomGenerator::global()->bounded(emptyTiles.size());
         QPair<int, int> position = emptyTiles[index];
-        tiles[position.first][position.second].setValue(2);
-    }
-}
-
-void MainWindow::drawGrid(QPainter &painter)
-{
-    painter.setPen(Qt::black);
-    for (int row = 0; row <= 4; ++row) {
-        painter.drawLine(0, row * 100, 400, row * 100);
-    }
-    for (int col = 0; col <= 4; ++col) {
-        painter.drawLine(col * 100 , 0, col * 100, 400);
-    }
-}
-
-void MainWindow::drawTiles(QPainter &painter)
-{
-    for (int row = 0; row < 4; ++row) {
-        for (int col = 0; col < 4; ++col) {
-            if (!tiles[row][col].isEmpty()) {
-                painter.setBrush(Qt::lightGray);
-                painter.drawRect(col * 100, row * 100, 100, 100);
-                painter.setPen(Qt::black);
-                painter.drawText(col * 100, row * 100, 100, 100, Qt::AlignCenter, QString::number(tiles[row][col].getValue()));
-            }
-        }
-    }
-}
-
-void MainWindow::moveTiles(Direction direction)
-{
-    switch (direction) {
-        case Direction::Up:
-            moveUp();
-            break;
-        case Direction::Down:
-            moveDown();
-            break;
-        case Direction::Left:
-            moveLeft();
-            break;
-        case Direction::Right:
-            moveRight();
-            break;
+        board[position.first][position.second] = new Tile(2, this);
+        board[position.first][position.second]->show();
+        board[position.first][position.second]->move(33 + position.second * 125, 322 + position.first * 125);
+        //std::cout << index << std::endl;
+        //std::cout << position.first << " , " << position.second << std::endl;
     }
 }
 
@@ -152,22 +112,23 @@ void MainWindow::moveUp()
 
     for (int row = 1; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
-            if (!tiles[row][col].isEmpty()) {
+            if (board[row][col] != nullptr) {
                 int newRow = row;
-                // поиск новой свободной строки для плитки
-                while (newRow > 0 && tiles[newRow - 1][col].isEmpty()) {
+                while (newRow > 0 && board[newRow - 1][col] == nullptr) {
                     newRow--;
                 }
-                // слияние плиток, если возможно
-                if (newRow != 0 && tiles[row][col].getValue() == tiles[newRow - 1][col].getValue()) {
-                    tiles[newRow - 1][col].setValue(tiles[row][col].getValue() * 2);
-                    tiles[row][col].setValue(0);
+                if (newRow != 0 && board[row][col]->getValue() == board[newRow - 1][col]->getValue()) {
+                    mergeTile(board[row][col], newRow - 1, col);
+                    board[newRow - 1][col]->setValue(board[row][col]->getValue() * 2);
+                    board[row][col] = nullptr;
+
                     needToAddTile = true;
                     continue;
                 }
-                if (newRow != row) {
-                    tiles[newRow][col].setValue(tiles[row][col].getValue());
-                    tiles[row][col].setValue(0);
+                else if (newRow != row) {
+                    moveTile(board[row][col], newRow, col);
+                    std::swap(board[newRow][col], board[row][col]);
+
                     needToAddTile = true;
                 }
             }
@@ -185,20 +146,23 @@ void MainWindow::moveDown()
 
     for (int row = 2; row >= 0; --row) {
         for (int col = 0; col < 4; ++col) {
-            if (!tiles[row][col].isEmpty()) {
+            if (board[row][col] != nullptr) {
                 int newRow = row;
-                while (newRow < 3 && tiles[newRow + 1][col].isEmpty()) {
+                while (newRow < 3 && board[newRow + 1][col] == nullptr) {
                     newRow++;
                 }
-                if (newRow != 3 && tiles[row][col].getValue() == tiles[newRow + 1][col].getValue()) {
-                    tiles[newRow + 1][col].setValue(tiles[row][col].getValue() * 2);
-                    tiles[row][col].setValue(0);
+                if (newRow != 3 && board[row][col]->getValue() == board[newRow + 1][col]->getValue()) {
+                    mergeTile(board[row][col], newRow + 1, col);
+                    board[newRow + 1][col]->setValue(board[row][col]->getValue() * 2);
+                    board[row][col] = nullptr;
+
                     needToAddTile = true;
                     continue;
                 }
-                if (newRow != row) {
-                    tiles[newRow][col].setValue(tiles[row][col].getValue());
-                    tiles[row][col].setValue(0);
+                else if (newRow != row) {
+                    moveTile(board[row][col], newRow, col);
+                    std::swap(board[newRow][col], board[row][col]);
+
                     needToAddTile = true;
                 }
             }
@@ -216,20 +180,23 @@ void MainWindow::moveLeft()
 
     for (int row = 0; row < 4; ++row) {
         for (int col = 1; col < 4; ++col) {
-            if (!tiles[row][col].isEmpty()) {
+            if (board[row][col] != nullptr) {
                 int newCol = col;
-                while (newCol > 0 && tiles[row][newCol - 1].isEmpty()) {
+                while(newCol > 0 && board[row][newCol - 1] == nullptr) {
                     newCol--;
                 }
-                if (newCol != 0 && tiles[row][col].getValue() == tiles[row][newCol - 1].getValue()) {
-                    tiles[row][newCol - 1].setValue(tiles[row][col].getValue() * 2);
-                    tiles[row][col].setValue(0);
+                if (newCol != 0 && board[row][col]->getValue() == board[row][newCol - 1]->getValue()) {
+                    mergeTile(board[row][col], row, newCol - 1);
+                    board[row][newCol - 1]->setValue(board[row][col]->getValue() * 2);
+                    board[row][col] = nullptr;
+
                     needToAddTile = true;
                     continue;
                 }
-                if (newCol != col) {
-                    tiles[row][newCol].setValue(tiles[row][col].getValue());
-                    tiles[row][col].setValue(0);
+                else if (newCol != col) {
+                    moveTile(board[row][col], row, newCol);
+                    std::swap(board[row][newCol], board[row][col]);
+
                     needToAddTile = true;
                 }
             }
@@ -247,20 +214,23 @@ void MainWindow::moveRight()
 
     for (int row = 0; row < 4; ++row) {
         for (int col = 2; col >= 0; --col) {
-            if (!tiles[row][col].isEmpty()) {
+            if (board[row][col] != nullptr) {
                 int newCol = col;
-                while (newCol < 3 && tiles[row][newCol + 1].isEmpty()) {
-                    newCol++;
+                while (newCol < 3 && board[row][newCol + 1] == nullptr) {
+                    newCol ++;
                 }
-                if (newCol != 3 && tiles[row][col].getValue() == tiles[row][newCol + 1].getValue()) {
-                    tiles[row][newCol + 1].setValue(tiles[row][col].getValue() * 2);
-                    tiles[row][col].setValue(0);
+                if (newCol != 3 && board[row][col]->getValue() == board[row][newCol + 1]->getValue()) {
+                    mergeTile(board[row][col], row, newCol + 1);
+                    board[row][newCol + 1]->setValue(board[row][col]->getValue() * 2);
+                    board[row][col] = nullptr;
+
                     needToAddTile = true;
                     continue;
                 }
-                if (newCol != col) {
-                    tiles[row][newCol].setValue(tiles[row][col].getValue());
-                    tiles[row][col].setValue(0);
+                else if (newCol != col) {
+                    moveTile(board[row][col], row, newCol);
+                    std::swap(board[row][newCol], board[row][col]);
+
                     needToAddTile = true;
                 }
             }
@@ -269,5 +239,50 @@ void MainWindow::moveRight()
 
     if (needToAddTile) {
         addRandomTile();
+    }
+}
+
+void MainWindow::moveTile(Tile *tile, int newRow, int newCol)
+{
+    // Перемещение плитки в новое положение
+    QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
+    QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
+    animation->setDuration(150);
+    animation->setStartValue(tile->pos());
+    animation->setEndValue(newPos);
+
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::mergeTile(Tile *tile, int newRow, int newCol)
+{
+    // Перемещение плитки в новое положение с последующим слиянием
+    QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
+    QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
+    animation->setDuration(150);
+    animation->setStartValue(tile->pos());
+    animation->setEndValue(newPos);
+
+    QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
+        this->onAnimationStateChanged(tile, newState, oldState);
+    });
+
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+
+    /*QObject::connect(animation, &QPropertyAnimation::finished, [this, tile, needToDelete]() {
+        if (needToDelete) {
+            tile->deleteLater();
+        }
+        //addRandomTile();
+    });*/
+}
+
+void MainWindow::onAnimationStateChanged(Tile* tile, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
+{
+    if (oldState == QAbstractAnimation::Stopped && newState == QAbstractAnimation::Running) {
+        tile->lower();
+    }
+    else if (oldState == QAbstractAnimation::Running && newState == QAbstractAnimation::Stopped) {
+        tile->deleteLater();
     }
 }
