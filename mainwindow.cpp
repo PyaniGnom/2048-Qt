@@ -1,13 +1,6 @@
-#include <QApplication>
-#include <QScreen>
-#include <QKeyEvent>
-#include <QPainter>
-#include <QRandomGenerator>
-#include <QPropertyAnimation>
-#include <iostream>
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent): QMainWindow(parent), gridLayout(new QGridLayout)
+MainWindow::MainWindow(QWidget *parent): QMainWindow(parent)
 {
     setFixedSize(551, 962);
     updateBackground();

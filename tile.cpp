@@ -1,5 +1,3 @@
-#include <QPainter>
-#include <QPropertyAnimation>
 #include "tile.h"
 
 Tile::Tile(int value, QWidget *parent) : QWidget(parent), m_value(value), m_animation(new QPropertyAnimation(this, "position"))

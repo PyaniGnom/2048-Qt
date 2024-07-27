@@ -1,8 +1,14 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QGridLayout>
+#include <QApplication>
 #include <QMainWindow>
+#include <QScreen>
+#include <QKeyEvent>
+#include <QPainter>
+#include <QPropertyAnimation>
+#include <QRandomGenerator>
+#include <iostream>
 #include "tile.h"
 
 class MainWindow : public QMainWindow
@@ -21,24 +27,12 @@ private:
     void updateBackground();
     void centerWindow();
 
-    enum class Direction {
-        Up,
-        Down,
-        Left,
-        Right
-    };
-
-    QVector<QVector<Tile>> tiles;
-
     void initUI();
     void addRandomTile();
     void moveUp();
     void moveDown();
     void moveLeft();
     void moveRight();
-
-    QGridLayout *gridLayout;
-    QWidget *tilesField;
 
     QVector<QVector<Tile*>> board;
     void moveTile(Tile *tile, int newRow, int newCol);

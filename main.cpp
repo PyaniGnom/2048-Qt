@@ -1,11 +1,5 @@
-#include "mainwindow.h"
-
 #include <QApplication>
-#include <QMainWindow>
-#include <QPalette>
-#include <QBrush>
-#include <QPixmap>
-#include <QPushButton>
+#include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {

@@ -2,6 +2,7 @@
 #define TILE_H
 
 #include <QWidget>
+#include <QPainter>
 #include <QPropertyAnimation>
 
 class Tile : public QWidget
