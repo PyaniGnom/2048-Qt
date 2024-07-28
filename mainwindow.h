@@ -34,12 +34,13 @@ private:
     void moveLeft();
     void moveRight();
 
+    bool canCreateTile = false;
     QVector<QVector<Tile*>> board;
     void moveTile(Tile *tile, int newRow, int newCol);
     void mergeTile(Tile *tile, int newRow, int newCol);
 
 private slots:
-    void onAnimationStateChanged(Tile* tile, QAbstractAnimation::State newState, QAbstractAnimation::State oldState);
+    void onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstractAnimation::State newState, QAbstractAnimation::State oldState);
 };
 
 #endif // MAINWINDOW_H

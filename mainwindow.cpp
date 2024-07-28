@@ -101,8 +101,6 @@ void MainWindow::addRandomTile()
 
 void MainWindow::moveUp()
 {
-    bool needToAddTile = false;
-
     for (int row = 1; row < 4; ++row) {
         for (int col = 0; col < 4; ++col) {
             if (board[row][col] != nullptr) {
@@ -115,28 +113,21 @@ void MainWindow::moveUp()
                     board[newRow - 1][col]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
-                    needToAddTile = true;
                     continue;
                 }
                 else if (newRow != row) {
                     moveTile(board[row][col], newRow, col);
                     std::swap(board[newRow][col], board[row][col]);
-
-                    needToAddTile = true;
                 }
             }
         }
     }
 
-    if (needToAddTile) {
-        addRandomTile();
-    }
+    canCreateTile = true;
 }
 
 void MainWindow::moveDown()
 {
-    bool needToAddTile = false;
-
     for (int row = 2; row >= 0; --row) {
         for (int col = 0; col < 4; ++col) {
             if (board[row][col] != nullptr) {
@@ -149,28 +140,21 @@ void MainWindow::moveDown()
                     board[newRow + 1][col]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
-                    needToAddTile = true;
                     continue;
                 }
                 else if (newRow != row) {
                     moveTile(board[row][col], newRow, col);
                     std::swap(board[newRow][col], board[row][col]);
-
-                    needToAddTile = true;
                 }
             }
         }
     }
 
-    if (needToAddTile) {
-        addRandomTile();
-    }
+    canCreateTile = true;
 }
 
 void MainWindow::moveLeft()
 {
-    bool needToAddTile = false;
-
     for (int row = 0; row < 4; ++row) {
         for (int col = 1; col < 4; ++col) {
             if (board[row][col] != nullptr) {
@@ -183,28 +167,21 @@ void MainWindow::moveLeft()
                     board[row][newCol - 1]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
-                    needToAddTile = true;
                     continue;
                 }
                 else if (newCol != col) {
                     moveTile(board[row][col], row, newCol);
                     std::swap(board[row][newCol], board[row][col]);
-
-                    needToAddTile = true;
                 }
             }
         }
     }
 
-    if (needToAddTile) {
-        addRandomTile();
-    }
+    canCreateTile = true;
 }
 
 void MainWindow::moveRight()
 {
-    bool needToAddTile = false;
-
     for (int row = 0; row < 4; ++row) {
         for (int col = 2; col >= 0; --col) {
             if (board[row][col] != nullptr) {
@@ -217,22 +194,17 @@ void MainWindow::moveRight()
                     board[row][newCol + 1]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
-                    needToAddTile = true;
                     continue;
                 }
                 else if (newCol != col) {
                     moveTile(board[row][col], row, newCol);
                     std::swap(board[row][newCol], board[row][col]);
-
-                    needToAddTile = true;
                 }
             }
         }
     }
 
-    if (needToAddTile) {
-        addRandomTile();
-    }
+    canCreateTile = true;
 }
 
 void MainWindow::moveTile(Tile *tile, int newRow, int newCol)
@@ -240,9 +212,13 @@ void MainWindow::moveTile(Tile *tile, int newRow, int newCol)
     // Перемещение плитки в новое положение
     QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
     QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
-    animation->setDuration(150);
+    animation->setDuration(120);
     animation->setStartValue(tile->pos());
     animation->setEndValue(newPos);
+
+    QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
+        this->onAnimationStateChanged(tile, false, newState, oldState);
+    });
 
     animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
@@ -252,12 +228,12 @@ void MainWindow::mergeTile(Tile *tile, int newRow, int newCol)
     // Перемещение плитки в новое положение с последующим слиянием
     QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
     QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
-    animation->setDuration(150);
+    animation->setDuration(120);
     animation->setStartValue(tile->pos());
     animation->setEndValue(newPos);
 
     QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
-        this->onAnimationStateChanged(tile, newState, oldState);
+        this->onAnimationStateChanged(tile, true, newState, oldState);
     });
 
     animation->start(QAbstractAnimation::DeleteWhenStopped);
@@ -270,12 +246,18 @@ void MainWindow::mergeTile(Tile *tile, int newRow, int newCol)
     });*/
 }
 
-void MainWindow::onAnimationStateChanged(Tile* tile, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
+void MainWindow::onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
 {
     if (oldState == QAbstractAnimation::Stopped && newState == QAbstractAnimation::Running) {
         tile->lower();
     }
     else if (oldState == QAbstractAnimation::Running && newState == QAbstractAnimation::Stopped) {
-        tile->deleteLater();
+        if (needToDelete) {
+            tile->deleteLater();
+        }
+        if (canCreateTile) {
+            addRandomTile();
+            canCreateTile = false;
+        }
     }
 }
