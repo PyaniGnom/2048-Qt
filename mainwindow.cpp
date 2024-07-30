@@ -32,6 +32,10 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
+    if (gameOverview) {
+        return;
+    }
+
     switch(event->key()) {
         case Qt::Key_Up:
             moveUp();
@@ -44,10 +48,6 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
             break;
         case Qt::Key_Right:
             moveRight();
-            break;
-        default:
-            // Вызываем базовую реализацию для других клавиш
-            QWidget::keyPressEvent(event);
             break;
     }
 
@@ -132,6 +132,7 @@ void MainWindow::addRandomTile()
         QPair<int, int> position = emptyTiles[index];
         board[position.first][position.second] = new Tile(2, this);
         board[position.first][position.second]->show();
+        board[position.first][position.second]->lower();
         board[position.first][position.second]->move(33 + position.second * 125, 322 + position.first * 125);
     }
 }
@@ -271,7 +272,7 @@ void MainWindow::ReloadEmptyTilesVec()
     }
 }
 
-bool MainWindow::BoardIsFill()
+bool MainWindow::IsBoardFill()
 {
     for (int row = 0; row < boardSize; ++row) {
         for (int col = 0; col < boardSize; ++col) {
@@ -297,21 +298,24 @@ bool MainWindow::BoardIsFill()
     return true; // Ни один элемент не имеет равного соседа
 }
 
-void MainWindow::onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
+void MainWindow::onAnimationStateChanged(Tile* tile, bool isMerge, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
 {
     if (oldState == QAbstractAnimation::Stopped && newState == QAbstractAnimation::Running) {
         tile->lower();
     }
     else if (oldState == QAbstractAnimation::Running && newState == QAbstractAnimation::Stopped) {
-        if (needToDelete) {
+        if (isMerge) {
             tile->deleteLater();
+            if (tile->getValue() * 2 == 2048) {
+                emit onGameWin();
+            }
         }
         if (canCreateTile) {
             addRandomTile();
             canCreateTile = false;
             ReloadEmptyTilesVec();
             if (emptyTiles.isEmpty()) {
-                if (BoardIsFill()) {
+                if (IsBoardFill()) {
                     emit onGameOver();
                 }
             }
@@ -355,20 +359,14 @@ void MainWindow::onRestartGame()
         "}"
     );
 
-    int ret = msgBox.exec();
-
-    switch (ret) {
-        case QMessageBox::Reset:
-            StartNewGame();
-            break;
-        default:
-            break;
+    if (msgBox.exec() == QMessageBox::Reset) {
+        StartNewGame();
     }
 }
 
 void MainWindow::onGameOver()
 {
-    QIcon icon(":/images/restartIcon-GameOver");
+    QIcon icon(":/images/restartIcon-Active");
     restartButton->setIcon(icon);
     restartButton->setIconSize(QSize(55, 55));
 
@@ -378,6 +376,22 @@ void MainWindow::onGameOver()
         gameOverview->setTextColor(QColor(120, 110, 101));
         gameOverview->setGeometry(18, 307, 515, 515);
         gameOverview->setText("Игра окончена!");
+        gameOverview->setVisible(true);
+    }
+}
+
+void MainWindow::onGameWin()
+{
+    QIcon icon(":/images/restartIcon-Active");
+    restartButton->setIcon(icon);
+    restartButton->setIconSize(QSize(55, 55));
+
+    if (!gameOverview) {
+        gameOverview = new GameOverviewWidget(this);
+        gameOverview->setFillColor(QColor(237, 206, 115, 255 * 0.5));
+        gameOverview->setTextColor(QColor(250, 246, 243));
+        gameOverview->setGeometry(18, 307, 515, 515);
+        gameOverview->setText("Вы победили!");
         gameOverview->setVisible(true);
     }
 }

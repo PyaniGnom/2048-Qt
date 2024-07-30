@@ -3,6 +3,7 @@
 GameOverviewWidget::GameOverviewWidget(QWidget *parent) : QWidget(parent), text("")
 {
     //setAttribute(Qt::WA_TransparentForMouseEvents);     // делает прозрачным для событий мыши
+    setAttribute(Qt::WA_AlwaysStackOnTop);
     setVisible(false);  // изначально невидим
 }
 

@@ -2,6 +2,6 @@
     <qresource prefix="/images">
         <file alias="background">src/img/background.png</file>
         <file alias="restartIcon">src/img/restartIcon.png</file>
-        <file alias="restartIcon-GameOver">src/img/restartIcon-GameOver.png</file>
+        <file alias="restartIcon-Active">src/img/restartIcon-Active.png</file>
     </qresource>
 </RCC>

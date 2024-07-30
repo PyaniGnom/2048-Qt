@@ -40,7 +40,8 @@ private:
     void moveTile(Tile *tile, bool isMerge, int newRow, int newCol);
     void ReloadEmptyTilesVec();
 
-    bool BoardIsFill();
+    bool IsBoardFill();
+    bool IsGameWin();
 
     const int boardSize = 4;
     bool canCreateTile = false;
@@ -53,6 +54,7 @@ private slots:
     void onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstractAnimation::State newState, QAbstractAnimation::State oldState);
     void onRestartGame();
     void onGameOver();
+    void onGameWin();
 };
 
 #endif // MAINWINDOW_H
