@@ -46,11 +46,7 @@ void Tile::paintEvent(QPaintEvent *event)
 
     // Установка цвета и размера текста
     painter.setPen(getForegroundForValue(m_value));
-    QFont font;
-    font.setFamily("Open Sans");
-    font.setPointSize(33);
-    font.setWeight(70);
-    font.setStyle(QFont::StyleNormal);
+    QFont font("Open Sans", 33, 70, false);
     painter.setFont(font);
 
     // Отрисовка значения в центре плитки
@@ -60,17 +56,17 @@ void Tile::paintEvent(QPaintEvent *event)
 QColor Tile::getBackgroundForValue(int value)
 {
     switch (value) {
-        case 2: return QColor(238, 228, 218);
-        case 4: return QColor(236, 224, 200);
-        case 8: return QColor(242, 177, 121);
-        case 16: return QColor(245, 149, 99);
-        case 32: return QColor(245, 124, 95);
-        case 64: return QColor(246, 93, 59);
-        case 128: return QColor(237, 206, 113);
-        case 256: return QColor(237, 204, 97);
-        case 512: return QColor(236, 200, 80);
-        case 1024: return QColor(237, 197, 63);
-        case 2048: return QColor(238, 194, 46);
+        case 2: return QColor("#eee4da");
+        case 4: return QColor("#ece0c8");
+        case 8: return QColor("#f2b179");
+        case 16: return QColor("#f59563");
+        case 32: return QColor("#f57c5f");
+        case 64: return QColor("#f65d3b");
+        case 128: return QColor("#edce71");
+        case 256: return QColor("#edcc61");
+        case 512: return QColor("#ecc850");
+        case 1024: return QColor("#edc53f");
+        case 2048: return QColor("#eec22e");
         default: return QColor(255, 0, 0);
     }
 }
@@ -78,17 +74,17 @@ QColor Tile::getBackgroundForValue(int value)
 QColor Tile::getForegroundForValue(int value)
 {
     switch (value) {
-        case 2: return QColor(119, 110, 101);
-        case 4: return QColor(119, 110, 101);
-        case 8: return QColor(249, 246, 241);
-        case 16: return QColor(249, 246, 241);
-        case 32: return QColor(249, 246, 241);
-        case 64: return QColor(249, 246, 241);
-        case 128: return QColor(249, 246, 241);
-        case 256: return QColor(249, 246, 241);
-        case 512: return QColor(249, 246, 241);
-        case 1024: return QColor(249, 246, 241);
-        case 2048: return QColor(249, 246, 241);
+        case 2:
+        case 4: return QColor("#776e65");
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+        case 128:
+        case 256:
+        case 512:
+        case 1024:
+        case 2048: return QColor("#f9f6f1");
         default: return QColor(255, 0, 0);
     }
 }

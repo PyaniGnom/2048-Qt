@@ -40,6 +40,7 @@ else()
             resources.qrc
             tile.h
             tile.cpp
+            gameoverviewwidget.h gameoverviewwidget.cpp
         )
     endif()
 endif()

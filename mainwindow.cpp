@@ -1,22 +1,27 @@
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent): QMainWindow(parent)
+MainWindow::MainWindow(QWidget *parent): QMainWindow(parent), gameOverview(nullptr)
 {
+    setFocusPolicy(Qt::StrongFocus);
+    setFocus();
+
     setFixedSize(551, 962);
     updateBackground();
     centerWindow();
 
     initUI();
-
-    addRandomTile();
-    addRandomTile();
-    /*for (int i = 0; i < 16; ++i) {
-        addRandomTile();
-    }*/
+    StartNewGame();
 }
 
 MainWindow::~MainWindow()
 {
+    for (auto& row : board) {
+        for (Tile* tile : row) {
+            delete tile;
+        }
+        row.clear();
+    }
+    board.clear();
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
@@ -40,9 +45,12 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         case Qt::Key_Right:
             moveRight();
             break;
+        default:
+            // Вызываем базовую реализацию для других клавиш
+            QWidget::keyPressEvent(event);
+            break;
     }
 
-    // Обновление интерфейса после каждого хода
     update();
 }
 
@@ -69,24 +77,55 @@ void MainWindow::centerWindow()
 
 void MainWindow::initUI()
 {
+    setWindowTitle("2048");
+
     board.resize(4);
     for (int row = 0; row < 4; ++row) {
         board[row].resize(4);
     }
 
-    setWindowTitle("2048");
+    restartButton = new QPushButton(this);
+    restartButton->setFixedSize(QSize(55, 55));
+    restartButton->move(QPoint(478, 236));
+    restartButton->setStyleSheet(
+        "QPushButton {"
+        "   border: none;"
+        "   border-radius: 16px;"
+        "}"
+    );
+    restartButton->setFocusPolicy(Qt::NoFocus);
+    restartButton->show();
+
+    QObject::connect(restartButton, &QPushButton::clicked, this, &MainWindow::onRestartGame);
+}
+
+void MainWindow::StartNewGame()
+{
+    QIcon icon(":/images/restartIcon");
+    restartButton->setIcon(icon);
+    restartButton->setIconSize(QSize(55, 55));
+
+    if (gameOverview) {
+        gameOverview->deleteLater();
+        gameOverview = nullptr;
+    }
+
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            if (board[row][col] != nullptr) {
+                board[row][col]->deleteLater();
+                board[row][col] = nullptr;
+            }
+        }
+    }
+
+    addRandomTile();
+    addRandomTile();
 }
 
 void MainWindow::addRandomTile()
 {
-    QVector<QPair<int, int>> emptyTiles;
-    for (int row = 0; row < 4; ++row) {
-        for (int col = 0; col < 4; ++col) {
-            if (board[row][col] == nullptr) {
-                emptyTiles.append(qMakePair(row, col));
-            }
-        }
-    }
+    ReloadEmptyTilesVec();
 
     if (!emptyTiles.isEmpty()) {
         int index = QRandomGenerator::global()->bounded(emptyTiles.size());
@@ -94,8 +133,6 @@ void MainWindow::addRandomTile()
         board[position.first][position.second] = new Tile(2, this);
         board[position.first][position.second]->show();
         board[position.first][position.second]->move(33 + position.second * 125, 322 + position.first * 125);
-        //std::cout << index << std::endl;
-        //std::cout << position.first << " , " << position.second << std::endl;
     }
 }
 
@@ -109,14 +146,14 @@ void MainWindow::moveUp()
                     newRow--;
                 }
                 if (newRow != 0 && board[row][col]->getValue() == board[newRow - 1][col]->getValue()) {
-                    mergeTile(board[row][col], newRow - 1, col);
+                    moveTile(board[row][col], true, newRow - 1, col);
                     board[newRow - 1][col]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
                     continue;
                 }
                 else if (newRow != row) {
-                    moveTile(board[row][col], newRow, col);
+                    moveTile(board[row][col], false, newRow, col);
                     std::swap(board[newRow][col], board[row][col]);
                 }
             }
@@ -136,14 +173,14 @@ void MainWindow::moveDown()
                     newRow++;
                 }
                 if (newRow != 3 && board[row][col]->getValue() == board[newRow + 1][col]->getValue()) {
-                    mergeTile(board[row][col], newRow + 1, col);
+                    moveTile(board[row][col], true, newRow + 1, col);
                     board[newRow + 1][col]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
                     continue;
                 }
                 else if (newRow != row) {
-                    moveTile(board[row][col], newRow, col);
+                    moveTile(board[row][col], false, newRow, col);
                     std::swap(board[newRow][col], board[row][col]);
                 }
             }
@@ -163,14 +200,14 @@ void MainWindow::moveLeft()
                     newCol--;
                 }
                 if (newCol != 0 && board[row][col]->getValue() == board[row][newCol - 1]->getValue()) {
-                    mergeTile(board[row][col], row, newCol - 1);
+                    moveTile(board[row][col], true, row, newCol - 1);
                     board[row][newCol - 1]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
                     continue;
                 }
                 else if (newCol != col) {
-                    moveTile(board[row][col], row, newCol);
+                    moveTile(board[row][col], false, row, newCol);
                     std::swap(board[row][newCol], board[row][col]);
                 }
             }
@@ -190,14 +227,14 @@ void MainWindow::moveRight()
                     newCol ++;
                 }
                 if (newCol != 3 && board[row][col]->getValue() == board[row][newCol + 1]->getValue()) {
-                    mergeTile(board[row][col], row, newCol + 1);
+                    moveTile(board[row][col], true, row, newCol);
                     board[row][newCol + 1]->setValue(board[row][col]->getValue() * 2);
                     board[row][col] = nullptr;
 
                     continue;
                 }
                 else if (newCol != col) {
-                    moveTile(board[row][col], row, newCol);
+                    moveTile(board[row][col], false, row, newCol);
                     std::swap(board[row][newCol], board[row][col]);
                 }
             }
@@ -207,43 +244,57 @@ void MainWindow::moveRight()
     canCreateTile = true;
 }
 
-void MainWindow::moveTile(Tile *tile, int newRow, int newCol)
+void MainWindow::moveTile(Tile *tile, bool isMerge, int newRow, int newCol)
 {
-    // Перемещение плитки в новое положение
     QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
     QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
     animation->setDuration(120);
     animation->setStartValue(tile->pos());
     animation->setEndValue(newPos);
 
-    QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
-        this->onAnimationStateChanged(tile, false, newState, oldState);
+    QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile, isMerge](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
+        this->onAnimationStateChanged(tile, isMerge, newState, oldState);
     });
 
     animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
-void MainWindow::mergeTile(Tile *tile, int newRow, int newCol)
+void MainWindow::ReloadEmptyTilesVec()
 {
-    // Перемещение плитки в новое положение с последующим слиянием
-    QPoint newPos = QPoint(33 + newCol * 125, 322 + newRow * 125);
-    QPropertyAnimation *animation = new QPropertyAnimation(tile, "pos");
-    animation->setDuration(120);
-    animation->setStartValue(tile->pos());
-    animation->setEndValue(newPos);
-
-    QObject::connect(animation, &QPropertyAnimation::stateChanged, [this, tile](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
-        this->onAnimationStateChanged(tile, true, newState, oldState);
-    });
-
-    animation->start(QAbstractAnimation::DeleteWhenStopped);
-
-    /*QObject::connect(animation, &QPropertyAnimation::finished, [this, tile, needToDelete]() {
-        if (needToDelete) {
-            tile->deleteLater();
+    emptyTiles.clear();
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            if (board[row][col] == nullptr) {
+                emptyTiles.append(qMakePair(row, col));
+            }
         }
-        //addRandomTile();
-    });*/
+    }
+}
+
+bool MainWindow::BoardIsFill()
+{
+    for (int row = 0; row < boardSize; ++row) {
+        for (int col = 0; col < boardSize; ++col) {
+            // Проверяем соседа сверху, если это не первый ряд
+            if (row > 0 && board[row][col]->getValue() == board[row - 1][col]->getValue()) {
+                return false;
+            }
+            // Проверяем соседа снизу, если это не последний ряд
+            if (row < boardSize - 1 && board[row][col]->getValue() == board[row + 1][col]->getValue()) {
+                return false;
+            }
+            // Проверяем соседа слева, если это не первый столбец
+            if (col > 0 && board[row][col]->getValue() == board[row][col - 1]->getValue()) {
+                return false;
+            }
+            // Проверяем соседа справа, если это не последний столбец
+            if (col < boardSize - 1 && board[row][col]->getValue() == board[row][col + 1]->getValue()) {
+                return false;
+            }
+        }
+    }
+
+    return true; // Ни один элемент не имеет равного соседа
 }
 
 void MainWindow::onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
@@ -258,6 +309,75 @@ void MainWindow::onAnimationStateChanged(Tile* tile, bool needToDelete, QAbstrac
         if (canCreateTile) {
             addRandomTile();
             canCreateTile = false;
+            ReloadEmptyTilesVec();
+            if (emptyTiles.isEmpty()) {
+                if (BoardIsFill()) {
+                    emit onGameOver();
+                }
+            }
         }
+    }
+}
+
+void MainWindow::onRestartGame()
+{
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Сбросить игру?");
+    msgBox.setText("Вы уверены, что хотите начать сначала?");
+    msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Reset);
+    msgBox.setDefaultButton(QMessageBox::Cancel);
+
+    msgBox.button(QMessageBox::Cancel)->setText("ОТМЕНА");
+    msgBox.button(QMessageBox::Reset)->setText("СБРОС");
+
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+        "   background-color: #ffffff;"     // Цвет фона окна
+        "   border: 0px;"   // Граница окна
+        "}"
+        "QMessageBox QLabel {"
+        "   min-width: 342px;"  // получается 385 на 177 px
+        "   min-height: 77px;"
+        "   color: #202020;"    // Цвет текста
+        "   font: normal normal 17px \"Open Sans\";"   // Размер шрифта текста
+        "   text-align: center;"
+        "}"
+        "QMessageBox QPushButton {"
+        "   background-color: #ffffff;"     // Цвет фона кнопок
+        "   font: normal bold 15px \"Open Sans\";"
+        "   color: #008578;"
+        "   border: 1px solid #8f8f8f;"     // Граница кнопок
+        "   min-width: 94px;"       // Минимальная ширина кнопок
+        "   min-height: 35px;"      // Минимальная высота кнопок
+        "}"
+        "QMessageBox QPushButton:pressed {"
+        "   background-color: #e5e5e5;"     // Фон при нажатии
+        "}"
+    );
+
+    int ret = msgBox.exec();
+
+    switch (ret) {
+        case QMessageBox::Reset:
+            StartNewGame();
+            break;
+        default:
+            break;
+    }
+}
+
+void MainWindow::onGameOver()
+{
+    QIcon icon(":/images/restartIcon-GameOver");
+    restartButton->setIcon(icon);
+    restartButton->setIconSize(QSize(55, 55));
+
+    if (!gameOverview) {
+        gameOverview = new GameOverviewWidget(this);
+        gameOverview->setFillColor(QColor(199, 187, 177, 255 * 0.5));
+        gameOverview->setTextColor(QColor(120, 110, 101));
+        gameOverview->setGeometry(18, 307, 515, 515);
+        gameOverview->setText("Игра окончена!");
+        gameOverview->setVisible(true);
     }
 }
